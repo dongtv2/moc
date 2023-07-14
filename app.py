@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import os
 import datetime
-from st_aggrid import AgGrid
+from st_aggrid import AgGrid,GridOptionsBuilder
 
 aclist = ['A521', 'A522', 'A523', 'A524', 'A526', 'A527', 'A528', 'A529', 'A531', 'A532', 'A533', 'A534', 'A535', 'A540', 'A542', 'A544', 'A600', 'A607', 'A629', 'A630', 'A631', 'A632', 'A633', 'A634', 'A635', 'A636', 'A637', 'A639', 'A640', 'A641', 'A642', 'A643', 'A644', 'A645', 'A646', 'A647', 'A648', 'A649', 'A650', 'A651', 'A652', 'A653', 'A654', 'A655', 'A656', 'A657', 'A658', 'A661', 'A662', 'A663', 'A666', 'A667', 'A668', 'A669', 'A670', 'A671', 'A672', 'A673', 'A674', 'A675', 'A676', 'A677', 'A683', 'A684', 'A685', 'A687', 'A689', 'A690', 'A691', 'A693', 'A694', 'A695', 'A697', 'A698', 'A699', 'A810', 'A811', 'A812', 'A814', 'A815', 'A816', 'A817']
 mainbase = ["SGN", "HAN", "DAD", "HPH", "VII", "CXR", "VCA", "PQC"]
@@ -109,5 +109,6 @@ if __name__ == "__main__":
         merged_df = aclist_df.merge(df_output, on='REG', how='left')
 
         df_final_ns = merged_df[['REG', 'ARR', 'STA', 'Route', 'Night-Stop', 'GRD-TIME']]
-        st.dataframe(df_final_ns)
+        # st.dataframe(df_final_ns)
+        AgGrid(df_final_ns, fit_columns_on_grid_load=True)
 
