@@ -67,14 +67,16 @@ def process_flight_data(df, aclist, mainbase):
     df_output = pd.DataFrame(last_row_data)
     return df_output
 
- 
+
 
 def upload_and_read_excel():
     uploaded_file = st.sidebar.file_uploader("Upload Excel File", type=["xlsx"])
     if uploaded_file is not None:
         try:
             file_contents = uploaded_file.read()
-            file_path = f"./{uploaded_file.name}"
+            folder_path = "./FPL"
+            os.makedirs(folder_path, exist_ok=True)  # Create the folder if it doesn't exist
+            file_path = os.path.join(folder_path, uploaded_file.name)
             with open(file_path, 'wb') as f:
                 f.write(file_contents)
             df = pd.read_excel(file_path)
@@ -82,6 +84,21 @@ def upload_and_read_excel():
             return df
         except pd.errors.ParserError as e:
             st.error(f"Error reading file: {uploaded_file.name} - {e}")
+ 
+
+# def upload_and_read_excel():
+#     uploaded_file = st.sidebar.file_uploader("Upload Excel File", type=["xlsx"])
+#     if uploaded_file is not None:
+#         try:
+#             file_contents = uploaded_file.read()
+#             file_path = f"./{uploaded_file.name}"
+#             with open(file_path, 'wb') as f:
+#                 f.write(file_contents)
+#             df = pd.read_excel(file_path)
+#             st.write("Uploaded file & reading data! Done")
+#             return df
+#         except pd.errors.ParserError as e:
+#             st.error(f"Error reading file: {uploaded_file.name} - {e}")
 
 if __name__ == "__main__":
     df = upload_and_read_excel()
