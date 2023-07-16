@@ -225,23 +225,24 @@ with tab4:
     if df_final_ns is not None:
         c1, c2 = st.columns(2)
         with c1:
-            # Create the chart
-            classification_counts = df_final_ns['ARR'].value_counts()
+            with st.expander("Biểu đồ phân bố NS ở các station", expanded=True):
+                # Create the chart
+                classification_counts = df_final_ns['ARR'].value_counts()
 
-            fig, ax = plt.subplots()  # Set the figsize with width=10 and height=4
-            ax.bar(classification_counts.index, classification_counts.values)
-            ax.set_xlabel('ARR')
-            ax.set_ylabel('Total Aircrafts')
+                fig, ax = plt.subplots()  # Set the figsize with width=10 and height=4
+                ax.bar(classification_counts.index, classification_counts.values)
+                ax.set_xlabel('ARR')
+                ax.set_ylabel('Total Aircrafts')
 
-            # Add count labels on top of each bar
-            for i, count in enumerate(classification_counts):
-                ax.text(i, count, str(count), ha='center', va='bottom')
+                # Add count labels on top of each bar
+                for i, count in enumerate(classification_counts):
+                    ax.text(i, count, str(count), ha='center', va='bottom')
 
-            # Display the chart using Streamlit
-            st.pyplot(fig)
+                # Display the chart using Streamlit
+                st.pyplot(fig)
 
             if overview_df is not None:
-                with st.expander("Biểu đồ ground time SGN", expanded=False):
+                with st.expander("Biểu đồ ground time SGN", expanded=True):
 
                     filtered_df_sgn = overview_df[overview_df['ARR_x'] == 'SGN']
                     filtered_df_sgn['GroundTime'] = pd.to_timedelta(filtered_df_sgn['GroundTime'] + ':00')
@@ -262,7 +263,7 @@ with tab4:
 
                     # Display the plot using st.pyplot()
                     st.pyplot(plt)
-                with st.expander("Biểu đồ ground time HAN", expanded=False):
+                with st.expander("Biểu đồ ground time HAN", expanded=True):
                     filtered_df_han = overview_df[overview_df['ARR_x'] == 'HAN']
                     filtered_df_han['GroundTime'] = pd.to_timedelta(filtered_df_han['GroundTime'] + ':00')
                     filtered_df_han = filtered_df_han.sort_values('GroundTime')
@@ -285,7 +286,7 @@ with tab4:
             if overview_df is not None:
 
 
-                with st.expander("Biểu đồ ground time DAD", expanded=False):
+                with st.expander("Biểu đồ ground time DAD", expanded=True):
                     filtered_df_dad = overview_df[overview_df['ARR_x'] == 'DAD']
                     filtered_df_dad['GroundTime'] = pd.to_timedelta(filtered_df_dad['GroundTime'] + ':00')
                     filtered_df_dad = filtered_df_dad.sort_values('GroundTime')
@@ -304,7 +305,7 @@ with tab4:
                         plt.text(i, value.total_seconds() / 3600, format_timedelta(value), ha='center', va='bottom', rotation=90, fontsize=8)
 
                     st.pyplot(plt)
-                with st.expander("Biểu đồ ground time CXR", expanded=False):
+                with st.expander("Biểu đồ ground time CXR", expanded=True):
                     filtered_df_cxr = overview_df[overview_df['ARR_x'] == 'CXR']
                     filtered_df_cxr['GroundTime'] = pd.to_timedelta(filtered_df_cxr['GroundTime'] + ':00')
                     filtered_df_cxr = filtered_df_cxr.sort_values('GroundTime')

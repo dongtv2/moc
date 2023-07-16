@@ -155,12 +155,12 @@ def process_preflight_data(df,aclist,mainbase):
     df_output = pd.DataFrame(first_row_data)
     return df_output
 
-tab1, tab2, tab3, tab4= st.tabs(["Night Stop", "Preflight", "Overviews","Charts"])
+tab1, tab2, tab3, tab4, tab5= st.tabs(["Night Stop", "Preflight", "Overviews","Charts","Demo"])
 
 df_final_ns = None
 df_final_preflight = None
 merged_df = None
-
+overview_df = None
 with tab1:
     st.header("NightStop")
     df_ns = upload_and_read_excel()
@@ -198,15 +198,6 @@ with tab3:
     if df_final_ns is not None and df_final_preflight is not None:
 
         overview_df = df_final_ns.merge(df_final_preflight, on='REG', how='inner')
-        # import datetime
-
-
-        # time_difference = overview_df['STD'] - overview_df['STA_x']
-        # overview_df['NS_TotalGround'] = time_difference.apply(lambda x: x.total_seconds() / 60 if x.total_seconds() > 0 else 0)
-
-        # # merged_df['NS_TotalGround'] = merged_df.apply(lambda row: calculate_ground_time(row['STA_x'], row['STD']), axis=1)
-        # # merged_df['STA_x'] = pd.to_datetime(merged_df['STA_x'])
-        # # merged_df['STD'] = pd.to_datetime(merged_df['STD'])
 
         overview_df['NS_TotalGround'] = overview_df.apply(lambda row: calculate_ground_time(row['STD_y'], row['STA_x']), axis=1)
 
@@ -219,21 +210,122 @@ with tab3:
         AgGrid(overview_df, fit_columns_on_grid_load=True)
 
 with tab4:
-    if merged_df is not None:
+    def classify_color(value):
+        if value < pd.Timedelta(hours=3):
+            return 'red'
+        elif value <= pd.Timedelta(hours=7):
+            return 'orange'
+        else:
+            return 'blue'
+    def format_timedelta(td):
+        hours = td.total_seconds() // 3600
+        minutes = (td.total_seconds() % 3600) // 60
+        return f"{int(hours):02d}:{int(minutes):02d}"
+    
+    if df_final_ns is not None:
+        c1, c2 = st.columns(2)
+        with c1:
+            with st.expander("Biểu đồ phân bố NS ở các station", expanded=True):
+                # Create the chart
+                classification_counts = df_final_ns['ARR'].value_counts()
 
-        # Create the chart
-        classification_counts = merged_df['ARR_x'].value_counts()
-        width = 8  # You can adjust this value based on your preference
-        height = width * (3/5)
+                fig, ax = plt.subplots()  # Set the figsize with width=10 and height=4
+                ax.bar(classification_counts.index, classification_counts.values)
+                ax.set_xlabel('ARR')
+                ax.set_ylabel('Total Aircrafts')
 
-        fig, ax = plt.subplots()  # Set the figsize with width=10 and height=4
-        ax.bar(classification_counts.index, classification_counts.values)
-        ax.set_xlabel('ARR_x')
-        ax.set_ylabel('Count')
+                # Add count labels on top of each bar
+                for i, count in enumerate(classification_counts):
+                    ax.text(i, count, str(count), ha='center', va='bottom')
 
-        # Add count labels on top of each bar
-        for i, count in enumerate(classification_counts):
-            ax.text(i, count, str(count), ha='center', va='bottom')
+                # Display the chart using Streamlit
+                st.pyplot(fig)
 
-        # Display the chart using Streamlit
-        st.pyplot(fig)
+            if overview_df is not None:
+                with st.expander("Biểu đồ ground time SGN", expanded=True):
+
+                    filtered_df_sgn = overview_df[overview_df['ARR_x'] == 'SGN']
+                    filtered_df_sgn['GroundTime'] = pd.to_timedelta(filtered_df_sgn['GroundTime'] + ':00')
+                    filtered_df_sgn = filtered_df_sgn.sort_values('GroundTime')
+                    filtered_df_sgn['Color'] = filtered_df_sgn['GroundTime'].apply(classify_color)
+
+                    plt.figure(figsize=(10,8))
+                    plt.bar(filtered_df_sgn['REG'], filtered_df_sgn['GroundTime'].dt.total_seconds() / 3600, color=filtered_df_sgn['Color'])
+
+                    plt.xlabel('Danh sách các tàu ở SGN')
+                    plt.ylabel('Tổng Ground Time (hours)')
+                    plt.title('Biểu đồ thời gian Ground Time các tàu ở SGN')
+                    plt.xticks(rotation=80)
+                    plt.ylim(bottom=0)  # Set the Y-axis lower limit to 0
+
+                    for i, value in enumerate(filtered_df_sgn['GroundTime']):
+                        plt.text(i, value.total_seconds() / 3600, format_timedelta(value), ha='center', va='bottom', rotation=90, fontsize=8)
+
+                    # Display the plot using st.pyplot()
+                    st.pyplot(plt)
+                with st.expander("Biểu đồ ground time HAN", expanded=True):
+                    filtered_df_han = overview_df[overview_df['ARR_x'] == 'HAN']
+                    filtered_df_han['GroundTime'] = pd.to_timedelta(filtered_df_han['GroundTime'] + ':00')
+                    filtered_df_han = filtered_df_han.sort_values('GroundTime')
+                    filtered_df_han['Color'] = filtered_df_han['GroundTime'].apply(classify_color)
+
+                    plt.figure(figsize=(10, 8))
+                    plt.bar(filtered_df_han['REG'], filtered_df_han['GroundTime'].dt.total_seconds() / 3600, color=filtered_df_han['Color'])
+
+                    plt.xlabel('Danh sách các tàu ở HAN')
+                    plt.ylabel('Tổng Ground Time (hours)')
+                    plt.title('Biểu đồ thời gian Ground Time các tàu ở HAN')
+                    plt.xticks(rotation=80)
+                    plt.ylim(bottom=0)  # Set the Y-axis lower limit to 0
+
+                    for i, value in enumerate(filtered_df_han['GroundTime']):
+                        plt.text(i, value.total_seconds() / 3600, format_timedelta(value), ha='center', va='bottom', rotation=90, fontsize=8)
+
+                    st.pyplot(plt)
+        with c2:
+            if overview_df is not None:
+
+
+                with st.expander("Biểu đồ ground time DAD", expanded=True):
+                    filtered_df_dad = overview_df[overview_df['ARR_x'] == 'DAD']
+                    filtered_df_dad['GroundTime'] = pd.to_timedelta(filtered_df_dad['GroundTime'] + ':00')
+                    filtered_df_dad = filtered_df_dad.sort_values('GroundTime')
+                    filtered_df_dad['Color'] = filtered_df_dad['GroundTime'].apply(classify_color)
+
+                    plt.figure(figsize=(10, 6))
+                    plt.bar(filtered_df_dad['REG'], filtered_df_dad['GroundTime'].dt.total_seconds() / 3600, color=filtered_df_dad['Color'])
+
+                    plt.xlabel('Danh sách các tàu ở DAD')
+                    plt.ylabel('Tổng Ground Time (hours)')
+                    plt.title('Biểu đồ thời gian Ground Time các tàu ở DAD')
+                    plt.xticks(rotation=80)
+                    plt.ylim(bottom=0)  # Set the Y-axis lower limit to 0
+
+                    for i, value in enumerate(filtered_df_dad['GroundTime']):
+                        plt.text(i, value.total_seconds() / 3600, format_timedelta(value), ha='center', va='bottom', rotation=90, fontsize=8)
+
+                    st.pyplot(plt)
+                with st.expander("Biểu đồ ground time CXR", expanded=True):
+                    filtered_df_cxr = overview_df[overview_df['ARR_x'] == 'CXR']
+                    filtered_df_cxr['GroundTime'] = pd.to_timedelta(filtered_df_cxr['GroundTime'] + ':00')
+                    filtered_df_cxr = filtered_df_cxr.sort_values('GroundTime')
+                    filtered_df_cxr['Color'] = filtered_df_cxr['GroundTime'].apply(classify_color)
+
+                    plt.figure(figsize=(10, 6))
+                    plt.bar(filtered_df_cxr['REG'], filtered_df_cxr['GroundTime'].dt.total_seconds() / 3600, color=filtered_df_cxr['Color'])
+
+                    plt.xlabel('Danh sách các tàu ở CXR')
+                    plt.ylabel('Tổng Ground Time (hours)')
+                    plt.title('Biểu đồ thời gian Ground Time các tàu ở CXR')
+                    plt.xticks(rotation=80)
+                    plt.ylim(bottom=0)  # Set the Y-axis lower limit to 0
+
+                    for i, value in enumerate(filtered_df_cxr['GroundTime']):
+                        plt.text(i, value.total_seconds() / 3600, format_timedelta(value), ha='center', va='bottom', rotation=90, fontsize=8)
+
+                    st.pyplot(plt)
+
+
+
+with tab5:
+    st.header("Charts")
