@@ -80,7 +80,8 @@ def process_flight_data(df, aclist, mainbase):
 
 
 def upload_and_read_excel():
-    uploaded_file = st.sidebar.file_uploader("Upload Excel File", type=["xlsx"])
+    
+    uploaded_file = st.sidebar.file_uploader("Upload Flight Plan - NightStop", type=["xlsx"])
     if uploaded_file is not None:
         try:
             file_contents = uploaded_file.read()
@@ -97,7 +98,7 @@ def upload_and_read_excel():
 
 def upload_and_read_excel_preflt():
     key = "excel_file_upload"
-    uploaded_file = st.sidebar.file_uploader("Upload Excel File", type=["xlsx"], key=key)
+    uploaded_file = st.sidebar.file_uploader("Upload Flight Plan - Preflight", type=["xlsx"], key=key)
 
     if uploaded_file is not None:
         try:
@@ -129,8 +130,9 @@ def process_preflight_data(df,aclist,mainbase):
     for aircraft in aclist:
             if aircraft in df['REG'].values:
                 flights = df.loc[df['REG'] == aircraft]
-                first_row = flights.iloc[0]
-                second_row = flights.iloc[1]
+                if len(flights) >= 2:  # Add this check
+                    first_row = flights.iloc[0]
+                    second_row = flights.iloc[1]
                 dep_value = first_row['DEP']
                 if dep_value in mainbase:
                     first_row_data.append({
@@ -162,6 +164,9 @@ merged_df = None
 with tab1:
     st.header("NightStop")
     df_ns = upload_and_read_excel()
+    with st.expander("Summary", expanded=True):
+        
+        st.write("ABC") 
 
     if df_ns is not None:
 
@@ -169,7 +174,7 @@ with tab1:
 
         merged_df_ns = aclist_df.merge(df_output, on='REG', how='left')
 
-        df_final_ns = merged_df_ns[['REG', 'ARR', 'STA', 'Route', 'NightStop', 'GroundTime']]
+        df_final_ns = merged_df_ns[['REG', 'ARR','STD','STA', 'Route', 'NightStop', 'GroundTime']]
        
         AgGrid(df_final_ns, fit_columns_on_grid_load=True)
 
@@ -192,15 +197,26 @@ with tab3:
 
     if df_final_ns is not None and df_final_preflight is not None:
 
-        merged_df = df_final_ns.merge(df_final_preflight, on='REG', how='inner')
+        overview_df = df_final_ns.merge(df_final_preflight, on='REG', how='inner')
+        # import datetime
 
-        merged_df['NS_TotalGround'] = merged_df.apply(lambda row: calculate_ground_time(row['STA_x'], row['STD']), axis=1)
-        
-        merged_df['TYPE'] = merged_df.apply(lambda row: '' if pd.isnull(row['GroundTime']) else 'TS_NS', axis=1)
 
-        overview_df = merged_df[['TYPE','REG', 'ARR_x', 'NightStop','GroundTime','NS_TotalGround', 'STD']]
+        # time_difference = overview_df['STD'] - overview_df['STA_x']
+        # overview_df['NS_TotalGround'] = time_difference.apply(lambda x: x.total_seconds() / 60 if x.total_seconds() > 0 else 0)
 
-        AgGrid(overview_df)
+        # # merged_df['NS_TotalGround'] = merged_df.apply(lambda row: calculate_ground_time(row['STA_x'], row['STD']), axis=1)
+        # # merged_df['STA_x'] = pd.to_datetime(merged_df['STA_x'])
+        # # merged_df['STD'] = pd.to_datetime(merged_df['STD'])
+
+        overview_df['NS_TotalGround'] = overview_df.apply(lambda row: calculate_ground_time(row['STD_y'], row['STA_x']), axis=1)
+
+        overview_df['GroundTime'] = overview_df['GroundTime'].fillna(overview_df['NS_TotalGround'])
+
+
+
+        overview_df = overview_df[['REG', 'ARR_x', 'NightStop','GroundTime', 'STD_y']]
+
+        AgGrid(overview_df, fit_columns_on_grid_load=True)
 
 with tab4:
     if merged_df is not None:
@@ -210,7 +226,7 @@ with tab4:
         width = 8  # You can adjust this value based on your preference
         height = width * (3/5)
 
-        fig, ax = plt.subplots(figsize=(width, height))  # Set the figsize with width=10 and height=4
+        fig, ax = plt.subplots()  # Set the figsize with width=10 and height=4
         ax.bar(classification_counts.index, classification_counts.values)
         ax.set_xlabel('ARR_x')
         ax.set_ylabel('Count')
