@@ -221,7 +221,7 @@ with tab4:
         hours = td.total_seconds() // 3600
         minutes = (td.total_seconds() % 3600) // 60
         return f"{int(hours):02d}:{int(minutes):02d}"
-    
+
     if df_final_ns is not None:
         c1, c2 = st.columns(2)
         with c1:
