@@ -5,5 +5,4 @@ streamlit-aggrid
 numpy
 matplotlib
 streamlit_authenticator
-os
 datetime
