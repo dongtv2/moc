@@ -155,12 +155,16 @@ def classify_color(value):
         return 'blue'
     
 # Định dạng thời gian
+
 def format_timedelta(td):
     hours = td.total_seconds() // 3600
     minutes = (td.total_seconds() % 3600) // 60
+
+    if pd.isnull(hours) or pd.isnull(minutes):
+        return "NaN"
+
     return f"{int(hours):02d}:{int(minutes):02d}"
 
-    
 
 # Biểu đồ hiển thị
 
