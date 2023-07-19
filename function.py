@@ -9,19 +9,32 @@ import streamlit_authenticator as stauth
 import pandas as pd
 
 
+# def calculate_ground_time(std, sta):
+#     if pd.isnull(std) or pd.isnull(sta):
+#         return np.nan
+
+#     std_time = datetime.datetime.strptime(std, '%H:%M')
+#     sta_time = datetime.datetime.strptime(sta, '%H:%M')
+
+#     if std_time < sta_time:
+#         std_time += datetime.timedelta(days=1)
+
+#     ground_time = std_time - sta_time
+
+#     return str(ground_time)[:-3]
+import datetime
+
 def calculate_ground_time(std, sta):
-    if pd.isnull(std) or pd.isnull(sta):
-        return np.nan
+    if std is None or std == '':
+        return 0
 
     std_time = datetime.datetime.strptime(std, '%H:%M')
     sta_time = datetime.datetime.strptime(sta, '%H:%M')
 
-    if std_time < sta_time:
-        std_time += datetime.timedelta(days=1)
+    ground_time = sta_time - std_time
 
-    ground_time = std_time - sta_time
+    return ground_time.total_seconds() / 60
 
-    return str(ground_time)[:-3]
 def process_flight_data(df, aclist, mainbase):
     index = df[df['Unnamed: 0'] == 'DATE'].index[0]
     df = df.iloc[index:]
