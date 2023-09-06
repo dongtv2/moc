@@ -33,7 +33,7 @@ with tab1:
     df_ns = upload_and_read_excel()
     with st.expander("Summary", expanded=True):
         
-        st.write("ABC") 
+        st.write("Upload flight plan ngày hôm này để tự động tìm night_stop của các tàu. Upload flight plan của ngày hôm sau để tính ground time") 
 
     if df_ns is not None:
 
