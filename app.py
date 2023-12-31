@@ -93,35 +93,35 @@ with tab4:
             AgGrid(final_merged_df, fit_columns_on_grid_load=True)
 
     if final_merged_df is not None:
-        if df_final_ns is not None:
-            with st.expander("Biểu đồ phân bố NS ở các station", expanded=True):
-                # Create the chart
-                classification_counts = final_merged_df['ARR_x'].value_counts()
+        
+        with st.expander("Biểu đồ phân bố NS ở các station", expanded=True):
+            # Create the chart
+            classification_counts = final_merged_df['ARR_x'].value_counts()
 
-                fig, ax = plt.subplots()  # Set the figsize with width=10 and height=4
-                ax.bar(classification_counts.index, classification_counts.values)
-                ax.set_xlabel('ARR')
-                ax.set_ylabel('Total Aircrafts')
+            fig, ax = plt.subplots()  # Set the figsize with width=10 and height=4
+            ax.bar(classification_counts.index, classification_counts.values)
+            ax.set_xlabel('ARR')
+            ax.set_ylabel('Total Aircrafts')
 
-                # Add count labels on top of each bar
-                for i, count in enumerate(classification_counts):
-                    ax.text(i, count, str(count), ha='center', va='bottom')
+            # Add count labels on top of each bar
+            for i, count in enumerate(classification_counts):
+                ax.text(i, count, str(count), ha='center', va='bottom')
 
-                # Display the chart using Streamlit
-                st.pyplot(fig)
+            # Display the chart using Streamlit
+            st.pyplot(fig)
 
-            with st.expander("Biểu đồ ground time SGN - HAN", expanded=True):
-                # Call the function for SGN
-                plot_ground_time_v1(final_merged_df, 'SGN', 'Biểu đồ ground time SGN')
+        with st.expander("Biểu đồ ground time SGN - HAN", expanded=True):
+            # Call the function for SGN
+            plot_ground_time_v1(final_merged_df, 'SGN', 'Biểu đồ ground time SGN')
 
-                # Call the function for HAN
-                plot_ground_time_v1(final_merged_df, 'HAN', 'Biểu đồ ground time HAN')
+            # Call the function for HAN
+            plot_ground_time_v1(final_merged_df, 'HAN', 'Biểu đồ ground time HAN')
 
-            with st.expander("Biểu đồ ground time DAD - CXR", expanded=True):
+        with st.expander("Biểu đồ ground time DAD - CXR", expanded=True):
 
 
-                # Call the function for DAD
-                plot_ground_time_v1(final_merged_df, 'DAD', 'Biểu đồ ground time DAD')
+            # Call the function for DAD
+            plot_ground_time_v1(final_merged_df, 'DAD', 'Biểu đồ ground time DAD')
 
-                # Call the function for CXR
-                plot_ground_time_v1(final_merged_df, 'CXR', 'Biểu đồ ground time CXR')
+            # Call the function for CXR
+            plot_ground_time_v1(final_merged_df, 'CXR', 'Biểu đồ ground time CXR')
