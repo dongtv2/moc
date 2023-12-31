@@ -14,19 +14,20 @@ st.set_page_config(
     layout = 'wide')
 
 
-aclist = ['A521', 'A522', 'A523', 'A524', 'A525','A526', 'A527', 'A528', 'A529', 'A530', 'A531', 'A532', 'A533', 'A534', 'A535','A536', 'A540', 'A542', 'A544', 'A600', 'A607', 'A629', 'A630', 'A631', 'A632', 'A633', 'A634', 'A635', 'A636', 'A637', 'A639', 'A640', 'A641', 'A642', 'A643', 'A644', 'A645', 'A646', 'A647', 'A648', 'A649', 'A650', 'A651', 'A652', 'A653', 'A654', 'A655', 'A656', 'A657', 'A658', 'A661', 'A662', 'A663', 'A666', 'A667', 'A668', 'A669', 'A670', 'A671', 'A672', 'A673', 'A674', 'A675', 'A676', 'A677', 'A683', 'A684', 'A685', 'A687', 'A689', 'A690', 'A691', 'A693', 'A694', 'A695', 'A697', 'A698', 'A699', 'A810', 'A811', 'A812', 'A814', 'A815', 'A816', 'A817']
+aclist = ['A521', 'A522', 'A523', 'A524', 'A525','A526', 'A527', 'A528', 'A529', 'A530', 'A531', 'A532', 'A533', 'A534', 'A535', 'A540', 'A542', 'A544', 'A600', 'A607', 'A629', 'A630', 'A631', 'A632', 'A633', 'A634', 'A635', 'A636', 'A637', 'A639', 'A640', 'A641', 'A642', 'A643', 'A644', 'A645', 'A646', 'A647', 'A648', 'A649', 'A650', 'A651', 'A652', 'A653', 'A654', 'A655', 'A656', 'A657', 'A658', 'A661', 'A662', 'A663', 'A666', 'A667', 'A668', 'A669', 'A670', 'A671', 'A672', 'A673', 'A674', 'A675', 'A676', 'A677', 'A683', 'A684', 'A685', 'A687', 'A689', 'A690', 'A691', 'A693', 'A694', 'A695', 'A697', 'A698', 'A699', 'A810', 'A811', 'A812', 'A814', 'A815', 'A816', 'A817']
 mainbase = ["SGN", "HAN", "DAD", "HPH", "VII", "CXR", "VCA", "PQC"]
 aclist_df = pd.DataFrame(aclist, columns=["REG"])
 
 
 
 
-tab1, tab2, tab3, tab4, tab5= st.tabs(["Night Stop", "Preflight", "Overviews","Charts","Demo"])
+tab1, tab2, tab3, tab4 = st.tabs(["Night Stop", "Preflight", "Overviews","Chart"])
 
 df_final_ns = None
 df_final_preflight = None
 merged_df = None
 overview_df = None
+merged_df_dailycheck = None
 
 with tab1:
     st.header("NightStop")
@@ -70,54 +71,52 @@ with tab3:
 
         overview_df['GroundTime'] = overview_df['GroundTime'].fillna(overview_df['NS_TotalGround'])
 
-
-
         overview_df = overview_df[['REG', 'ARR_x', 'NightStop','GroundTime', 'STD_y']]
 
         AgGrid(overview_df, fit_columns_on_grid_load=True)
 
+
 with tab4:
+    st.header("Chart")
+    st.write("Sau khi Upload file daily check export từ AMOS, dữ liệu sẽ hiện thị ở đây để so sánh")
 
-    if df_final_ns is not None:
-        c1, c2 = st.columns(2)
-        with c1:
-            with st.expander("Biểu đồ phân bố NS ở các station", expanded=True):
-                # Create the chart
-                classification_counts = df_final_ns['ARR'].value_counts()
+    df_daily_check = upload_and_read_excel_daily_check()
 
-                fig, ax = plt.subplots()  # Set the figsize with width=10 and height=4
-                ax.bar(classification_counts.index, classification_counts.values)
-                ax.set_xlabel('ARR')
-                ax.set_ylabel('Total Aircrafts')
+    if df_daily_check is not None:
+        merged_df_dailycheck = overview_df.merge(df_daily_check, on='REG', how='inner')
 
-                # Add count labels on top of each bar
-                for i, count in enumerate(classification_counts):
-                    ax.text(i, count, str(count), ha='center', va='bottom')
 
-                # Display the chart using Streamlit
-                st.pyplot(fig)
+    if merged_df_dailycheck is not None:
+        if df_final_ns is not None:
+            c1, c2 = st.columns(2)
+            with c1:
+                with st.expander("Biểu đồ phân bố NS ở các station", expanded=True):
+                    # Create the chart
+                    classification_counts = df_final_ns['ARR'].value_counts()
 
-            if overview_df is not None:
-                with st.expander("Biểu đồ ground time SGN - HAN", expanded=True):
+                    fig, ax = plt.subplots()  # Set the figsize with width=10 and height=4
+                    ax.bar(classification_counts.index, classification_counts.values)
+                    ax.set_xlabel('ARR')
+                    ax.set_ylabel('Total Aircrafts')
 
-                  # Call the function for SGN
-                    plot_ground_time(overview_df, 'SGN', 'Biểu đồ ground time SGN')
+                    # Add count labels on top of each bar
+                    for i, count in enumerate(classification_counts):
+                        ax.text(i, count, str(count), ha='center', va='bottom')
+
+                    # Display the chart using Streamlit
+                    st.pyplot(fig)
+                    
+                    # Call the function for SGN
+                    plot_ground_time_v1(merged_df_dailycheck, 'SGN', 'Biểu đồ ground time SGN')
 
                     # Call the function for HAN
-                    plot_ground_time(overview_df, 'HAN', 'Biểu đồ ground time HAN')
-        with c2:
-            if overview_df is not None:
-                
-                with st.expander("Biểu đồ ground time DAD - CXR", expanded=True):
+                    plot_ground_time_v1(merged_df_dailycheck, 'HAN', 'Biểu đồ ground time HAN')
+            with c2:
+                with st.expander("Biểu đồ ground time SGN - HAN", expanded=True):
+
 
                     # Call the function for DAD
-                    plot_ground_time(overview_df, 'DAD', 'Biểu đồ ground time DAD')
+                    plot_ground_time_v1(merged_df_dailycheck, 'DAD', 'Biểu đồ ground time DAD')
 
                     # Call the function for CXR
-                    plot_ground_time(overview_df, 'CXR', 'Biểu đồ ground time CXR')
-                
-
-
-with tab5:
-    st.header("Input AOG")
-    
+                    plot_ground_time_v1(merged_df_dailycheck, 'CXR', 'Biểu đồ ground time CXR')
