@@ -190,3 +190,49 @@ def plot_ground_time(df, city, title):
         plt.text(i, value.total_seconds() / 3600, format_timedelta(value), ha='center', va='bottom', rotation=90, fontsize=8)
 
     st.pyplot(plt)
+
+def plot_ground_time_v1(df, city, title):
+    filtered_df = df[df['ARR_x'] == city]
+    filtered_df['GroundTime'] = pd.to_timedelta(filtered_df['GroundTime'] + ':00')
+    filtered_df = filtered_df.sort_values('GroundTime')
+    filtered_df['Color'] = filtered_df['GroundTime'].apply(classify_color)
+
+    # Ensure 'To Go' column exists
+    if 'To Go' in filtered_df.columns:
+        to_go_data = filtered_df['To Go']
+
+    plt.figure(figsize=(20, 15))
+    bars = plt.bar(filtered_df['REG'], filtered_df['GroundTime'].dt.total_seconds() / 3600, color=filtered_df['Color'])
+
+    plt.xlabel(f'Danh sách các tàu ở {city}')
+    plt.ylabel('Tổng Ground Time (hours)')
+    plt.title(f'Biểu đồ thời gian Ground Time các tàu ở {city}')
+    plt.xticks(rotation=80)
+    plt.ylim(bottom=0)  # Set the Y-axis lower limit to 0
+
+    for i, bar in enumerate(bars):
+        yval = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width()/2, yval + 0.05, to_go_data.iloc[i], ha='center', va='bottom', rotation=60, fontsize=9)
+        plt.text(bar.get_x() + bar.get_width()/2, yval - 0.05, format_timedelta(filtered_df['GroundTime'].iloc[i]), ha='center', va='top', rotation=90, fontsize=11, color='white')
+
+    st.pyplot(plt)
+def upload_and_read_excel_daily_check():
+    key = "daily_check"
+    uploaded_file = st.sidebar.file_uploader("Upload File DailyCheck From AMOS", type=["csv"], key=key)
+
+    if uploaded_file is not None:
+        try:
+            file_contents = uploaded_file.read()
+            folder_path = "./FPL"
+            os.makedirs(folder_path, exist_ok=True)  # Create the folder if it doesn't exist
+            file_path = os.path.join(folder_path, uploaded_file.name)
+            with open(file_path, 'wb') as f:
+                f.write(file_contents)
+            df = pd.read_csv(file_path)
+            df.reset_index(inplace=True)
+            df.rename(columns={'A/C': 'REG'}, inplace=True)  # Modify df in place
+            st.write("Uploaded file & reading data! Done")
+            return df[['REG', 'To Go']]  # Access 'REG' instead of 'A/C'
+        except pd.errors.ParserError as e:
+            st.error(f"Error reading file: {uploaded_file.name} - {e}")
+
