@@ -5,123 +5,238 @@ import datetime
 import numpy as np
 import matplotlib.pyplot as plt
 from st_aggrid import AgGrid,GridOptionsBuilder
-from function import *
 import streamlit_authenticator as stauth
+import pandas as pd
 
 
-st.set_page_config(
-    page_title='Maintenance Operation Control',
-    layout = 'wide')
+def calculate_ground_time(std, sta):
+    if pd.isnull(std) or pd.isnull(sta):
+        return np.nan
+
+    std_time = datetime.datetime.strptime(std, '%H:%M')
+    sta_time = datetime.datetime.strptime(sta, '%H:%M')
+
+    if std_time < sta_time:
+        std_time += datetime.timedelta(days=1)
+
+    ground_time = std_time - sta_time
+
+    return str(ground_time)[:-3]
 
 
-aclist = ['A521', 'A522', 'A523', 'A524', 'A525','A526', 'A527', 'A528', 'A529', 'A530', 'A531', 'A532', 'A533', 'A534', 'A535', 'A540', 'A542', 'A544', 'A600', 'A607', 'A629', 'A630', 'A631', 'A632', 'A633', 'A634', 'A635', 'A636', 'A637', 'A639', 'A640', 'A641', 'A642', 'A643', 'A644', 'A645', 'A646', 'A647', 'A648', 'A649', 'A650', 'A651', 'A652', 'A653', 'A654', 'A655', 'A656', 'A657', 'A658', 'A661', 'A662', 'A663', 'A666', 'A667', 'A668', 'A669', 'A670', 'A671', 'A672', 'A673', 'A674', 'A675', 'A676', 'A677', 'A683', 'A684', 'A685', 'A687', 'A689', 'A690', 'A691', 'A693', 'A694', 'A695', 'A697', 'A698', 'A699', 'A810', 'A811', 'A812', 'A814', 'A815', 'A816', 'A817']
-mainbase = ["SGN", "HAN", "DAD", "HPH", "VII", "CXR", "VCA", "PQC"]
-aclist_df = pd.DataFrame(aclist, columns=["REG"])
+
+def process_flight_data(df, aclist, mainbase):
+    index = df[df['Unnamed: 0'] == 'DATE'].index[0]
+    df = df.iloc[index:]
+    df.columns = df.iloc[0]
+    df = df[1:]
+    df = df.dropna(axis=0, how='all')
+    df = df.reset_index(drop=True)
+    df = df.drop(df.columns[[10, 11]], axis=1)
+    df['REG'] = df['REG'].str.replace('VN-', '')
+
+    last_row_data = []
+
+    for aircraft in aclist:
+        if aircraft in df['REG'].values:
+            flights = df.loc[df['REG'] == aircraft]
+            last_row = flights.iloc[-1]
+            prev_row = None
+            if len(flights) >= 2:
+                prev_row = flights.iloc[-2] 
+            arr_value = last_row['ARR']
+
+            if arr_value in mainbase:
+                last_row_data.append({
+                    'REG': aircraft,
+                    'DEP': last_row['DEP'],
+                    'ARR': arr_value,
+                    'STD': last_row['STD'],
+                    'STA': last_row['STA'],
+                    'Route': f"{last_row['DEP']} - {last_row['ARR']}",
+                    'NightStop': last_row['STA']
+                })
+            else:
+                last_row_data.append({
+                    'REG': aircraft,
+                    'DEP': last_row['ARR'],
+                    'ARR': prev_row['ARR'] if prev_row is not None else None,
+                    'STA': prev_row['STA'] if prev_row is not None else None,
+                    'STD': last_row['STD'],
+                    'Route': f"{last_row['DEP']} - {last_row['ARR']}"if prev_row is not None else None,
+                    'NightStop': f"{prev_row['STA']} - {last_row['STD']}"if prev_row is not None else None,
+                    'GroundTime': calculate_ground_time(last_row['STD'], prev_row['STA']) if prev_row is not None else None,
+                })
+
+    df_output = pd.DataFrame(last_row_data)
+    return df_output
 
 
 
+def upload_and_read_excel():
+    
+    uploaded_file = st.sidebar.file_uploader("Upload Flight Plan - NightStop", type=["xlsx"])
+    if uploaded_file is not None:
+        try:
+            file_contents = uploaded_file.read()
+            folder_path = "./FPL"
+            os.makedirs(folder_path, exist_ok=True)  # Create the folder if it doesn't exist
+            file_path = os.path.join(folder_path, uploaded_file.name)
+            with open(file_path, 'wb') as f:
+                f.write(file_contents)
+            df = pd.read_excel(file_path)
+            st.write("Uploaded file & reading data! Done")
+            return df
+        except pd.errors.ParserError as e:
+            st.error(f"Error reading file: {uploaded_file.name} - {e}")
 
-tab1, tab2, tab3, tab4 = st.tabs(["Night Stop", "Preflight", "Overviews","Chart"])
+def upload_and_read_excel_preflt():
+    key = "excel_file_upload"
+    uploaded_file = st.sidebar.file_uploader("Upload Flight Plan - Preflight", type=["xlsx"], key=key)
 
-df_final_ns = None
-df_final_preflight = None
-merged_df = None
-overview_df = None
-merged_df_dailycheck = None
+    if uploaded_file is not None:
+        try:
+            file_contents = uploaded_file.read()
+            folder_path = "./FPL"
+            os.makedirs(folder_path, exist_ok=True)  # Create the folder if it doesn't exist
+            file_path = os.path.join(folder_path, uploaded_file.name)
+            with open(file_path, 'wb') as f:
+                f.write(file_contents)
+            df = pd.read_excel(file_path)
+            st.write("Uploaded file & reading data! Done")
+            return df
+        except pd.errors.ParserError as e:
+            st.error(f"Error reading file: {uploaded_file.name} - {e}")
 
-with tab1:
-    st.header("NightStop")
-    df_ns = upload_and_read_excel()
-    with st.expander("Summary", expanded=True):
-        
-        st.write("Upload flight plan ngày hôm này để tự động tìm night_stop của các tàu. Upload flight plan của ngày hôm sau để tính ground time") 
+ 
+def process_preflight_data(df,aclist,mainbase):
+    index = df[df['Unnamed: 0'] == 'DATE'].index[0]
+    df = df.iloc[index:]
+    df.columns = df.iloc[0]
+    df = df[1:]
+    df = df.dropna(axis=0, how='all')
+    df = df.reset_index(drop=True)
+    df = df.drop(df.columns[[10, 11]], axis=1)
+    df['REG'] = df['REG'].str.replace('VN-', '')
 
-    if df_ns is not None:
+    first_row_data = []
+    
+    for aircraft in aclist:
+            if aircraft in df['REG'].values:
+                flights = df.loc[df['REG'] == aircraft]
+                if len(flights) >= 2:  # Add this check
+                    first_row = flights.iloc[0]
+                    second_row = flights.iloc[1]
+                dep_value = first_row['DEP']
+                if dep_value in mainbase:
+                    first_row_data.append({
+                        'REG': aircraft,
+                        'DEP': first_row['DEP'],
+                        'ARR': first_row['ARR'],
+                        'STD': first_row['STD'],
+                        'STA': first_row['STA'],
+                        'Route': f"{first_row['DEP']} - {first_row['ARR']}"
+                    })
+                else:
+                    first_row_data.append({
+                        'REG': aircraft,
+                        'DEP': first_row['DEP'],
+                        'ARR': first_row['ARR'],
+                        'STD': first_row['STD'],
+                        'STA': first_row['STA'],
+                        'Route': f"{first_row['DEP']} - {first_row['ARR']}"
+                    })
+    df_output = pd.DataFrame(first_row_data)
+    return df_output
 
-        df_output = process_flight_data(df_ns, aclist, mainbase)
+def classify_color(value):
+    if value < pd.Timedelta(hours=3):
+        return 'red'
+    elif value <= pd.Timedelta(hours=7):
+        return 'orange'
+    else:
+        return 'blue'
+    
+# Định dạng thời gian
 
-        merged_df_ns = aclist_df.merge(df_output, on='REG', how='left')
+def format_timedelta(td):
+    hours = td.total_seconds() // 3600
+    minutes = (td.total_seconds() % 3600) // 60
 
-        df_final_ns = merged_df_ns[['REG', 'ARR','STD','STA', 'Route', 'NightStop', 'GroundTime']]
-       
-        AgGrid(df_final_ns, fit_columns_on_grid_load=True)
+    if pd.isnull(hours) or pd.isnull(minutes):
+        return "NaN"
 
-with tab2:
-    st.header("Preflight")
-    df_preflight = upload_and_read_excel_preflt()
-
-    if df_preflight is not None:
-
-        df_output_preflight = process_preflight_data(df_preflight, aclist, mainbase)
-
-        merged_df_preflight = aclist_df.merge(df_output_preflight, on='REG', how='left')
-
-        df_final_preflight = merged_df_preflight[['REG','DEP' ,'ARR', 'STD','STA', 'Route']]
-
-        AgGrid(df_final_preflight, fit_columns_on_grid_load=True)
-
-with tab3:
-    st.header("Overview allocation")
-
-    if df_final_ns is not None and df_final_preflight is not None:
-
-        overview_df = df_final_ns.merge(df_final_preflight, on='REG', how='inner')
-
-        overview_df['NS_TotalGround'] = overview_df.apply(lambda row: calculate_ground_time(row['STD_y'], row['STA_x']), axis=1)
-
-        overview_df['GroundTime'] = overview_df['GroundTime'].fillna(overview_df['NS_TotalGround'])
-
-        overview_df = overview_df[['REG', 'ARR_x', 'NightStop','GroundTime', 'STD_y']]
-
-        AgGrid(overview_df, fit_columns_on_grid_load=True)
-
-
-with tab4:
-    st.header("Chart")
-    st.write("Sau khi Upload file daily check export từ AMOS, dữ liệu sẽ hiện thị ở đây để so sánh")
-
-    df_daily_check = upload_and_read_excel_daily_check()
-
-    if df_daily_check is not None:
-        # merged_df_dailycheck = df_daily_check.merge(overview_df, on='REG', how='left')
-        # Merge aclist_df with df_daily_check
-        merged_df = aclist_df.merge(df_daily_check, on='REG', how='left')
-
-        # Merge the result with overview_df
-        final_merged_df = merged_df.merge(overview_df, on='REG', how='left')
-        with st.expander("Bảng dữ liệu sau khi gôp", expanded=True):
-            AgGrid(final_merged_df, fit_columns_on_grid_load=True)
-
-    if final_merged_df is not None:
-        if df_final_ns is not None:
-            with st.expander("Biểu đồ phân bố NS ở các station", expanded=True):
-                # Create the chart
-                classification_counts = final_merged_df['ARR_x'].value_counts()
-
-                fig, ax = plt.subplots()  # Set the figsize with width=10 and height=4
-                ax.bar(classification_counts.index, classification_counts.values)
-                ax.set_xlabel('ARR')
-                ax.set_ylabel('Total Aircrafts')
-
-                # Add count labels on top of each bar
-                for i, count in enumerate(classification_counts):
-                    ax.text(i, count, str(count), ha='center', va='bottom')
-
-                # Display the chart using Streamlit
-                st.pyplot(fig)
-
-            with st.expander("Biểu đồ ground time SGN - HAN", expanded=True):
-                # Call the function for SGN
-                plot_ground_time_v1(final_merged_df, 'SGN', 'Biểu đồ ground time SGN')
-
-                # Call the function for HAN
-                plot_ground_time_v1(final_merged_df, 'HAN', 'Biểu đồ ground time HAN')
-
-            with st.expander("Biểu đồ ground time DAD - CXR", expanded=True):
+    return f"{int(hours):02d}:{int(minutes):02d}"
 
 
-                # Call the function for DAD
-                plot_ground_time_v1(final_merged_df, 'DAD', 'Biểu đồ ground time DAD')
+# Biểu đồ hiển thị
 
-                # Call the function for CXR
-                plot_ground_time_v1(final_merged_df, 'CXR', 'Biểu đồ ground time CXR')
+def plot_ground_time(df, city, title):
+    filtered_df = df[df['ARR_x'] == city]
+    filtered_df['GroundTime'] = pd.to_timedelta(filtered_df['GroundTime'] + ':00')
+    filtered_df = filtered_df.sort_values('GroundTime')
+    filtered_df['Color'] = filtered_df['GroundTime'].apply(classify_color)
+
+    plt.figure(figsize=(10, 8))
+    plt.bar(filtered_df['REG'], filtered_df['GroundTime'].dt.total_seconds() / 3600, color=filtered_df['Color'])
+
+    plt.xlabel(f'Danh sách các tàu ở {city}')
+    plt.ylabel('Tổng Ground Time (hours)')
+    plt.title(f'Biểu đồ thời gian Ground Time các tàu ở {city}')
+    plt.xticks(rotation=80)
+    plt.ylim(bottom=0)  # Set the Y-axis lower limit to 0
+
+    for i, value in enumerate(filtered_df['GroundTime']):
+        plt.text(i, value.total_seconds() / 3600, format_timedelta(value), ha='center', va='bottom', rotation=90, fontsize=8)
+
+    st.pyplot(plt)
+
+def plot_ground_time_v1(df, city, title):
+    filtered_df = df[df['ARR_x'] == city]
+    # Convert 'GroundTime' to timedelta, handle conversion errors
+    filtered_df['GroundTime'] = pd.to_timedelta(filtered_df['GroundTime'] + ':00', errors='coerce')
+    # Fill NaN values with 0 hours
+    filtered_df['GroundTime'] = filtered_df['GroundTime'].fillna(pd.Timedelta(hours=0))
+    filtered_df = filtered_df.sort_values('GroundTime')
+    filtered_df['Color'] = filtered_df['GroundTime'].apply(classify_color)
+
+    # Ensure 'To Go' column exists
+    if 'To Go' in filtered_df.columns:
+        to_go_data = filtered_df['To Go']
+
+    plt.figure(figsize=(12, 10))
+    # Create a horizontal bar chart
+    bars = plt.barh(filtered_df['REG'], filtered_df['GroundTime'].dt.total_seconds() / 3600, color=filtered_df['Color'])
+
+    plt.ylabel(f'Danh sách các tàu ở {city}')
+    plt.xlabel('Tổng Ground Time (hours)')
+    plt.title(f'Biểu đồ thời gian Ground Time các tàu ở {city}')
+    plt.yticks(fontsize=8)  # Reduce font size to fit more labels
+    plt.xlim(left=0)  # Set the X-axis lower limit to 0
+
+    for i, bar in enumerate(bars):
+        xval = bar.get_width()
+        plt.text(xval + 0.05, bar.get_y() + bar.get_height()/2, to_go_data.iloc[i], ha='left', va='center', rotation=0, fontsize=9)
+        plt.text(xval - 0.05, bar.get_y() + bar.get_height()/2, format_timedelta(filtered_df['GroundTime'].iloc[i]), ha='right', va='center', rotation=0, fontsize=11, color='white')
+
+    st.pyplot(plt)
+def upload_and_read_excel_daily_check():
+    key = "daily_check"
+    uploaded_file = st.sidebar.file_uploader("Upload File DailyCheck From AMOS", type=["csv"], key=key)
+
+    if uploaded_file is not None:
+        try:
+            file_contents = uploaded_file.read()
+            folder_path = "./FPL"
+            os.makedirs(folder_path, exist_ok=True)  # Create the folder if it doesn't exist
+            file_path = os.path.join(folder_path, uploaded_file.name)
+            with open(file_path, 'wb') as f:
+                f.write(file_contents)
+            df = pd.read_csv(file_path)
+            df.reset_index(inplace=True)
+            df.rename(columns={'A/C': 'REG'}, inplace=True)  # Modify df in place
+            st.write("Uploaded file & reading data! Done")
+            return df[['REG', 'To Go']]  # Access 'REG' instead of 'A/C'
+        except pd.errors.ParserError as e:
+            st.error(f"Error reading file: {uploaded_file.name} - {e}")
+
