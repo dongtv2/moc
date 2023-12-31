@@ -28,6 +28,7 @@ df_final_preflight = None
 merged_df = None
 overview_df = None
 merged_df_dailycheck = None
+final_merged_df = None
 
 with tab1:
     st.header("NightStop")
